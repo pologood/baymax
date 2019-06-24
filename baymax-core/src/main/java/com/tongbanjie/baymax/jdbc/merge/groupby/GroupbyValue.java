@@ -22,9 +22,12 @@ public class GroupbyValue implements OrderByComparetor.CompareEntity{
 
     private GroupbyMetaData metaData;
 
-    public GroupbyValue(ResultSet set, GroupbyMetaData metaData, Map<String, MergeColumn.MergeType> aggColumns) throws SQLException {
-        this(set, metaData, aggColumns, null);
-    }
+    /**
+     * 上次get的列
+     */
+    private String lastColumn;
+
+    private boolean wasNull;
 
     /**
      *
@@ -50,7 +53,7 @@ public class GroupbyValue implements OrderByComparetor.CompareEntity{
                         int countlabel = metaData.getColumnIndex(columnLabel + "COUNT");
 
                         valus[i] = GroupbyAggMerger.mergeAvg(
-                                (BigDecimal)valus[sumlabel],            (BigDecimal)valus[countlabel],
+                                set.getBigDecimal(sumlabel),            set.getBigDecimal(countlabel),
                                 (BigDecimal)other.getValus()[sumlabel], (BigDecimal)other.getValus()[countlabel],
                                 mergeType);
                     }else {
@@ -69,11 +72,17 @@ public class GroupbyValue implements OrderByComparetor.CompareEntity{
     }
 
     public <T> T getValue(int index, Class<T> type){
-        return (T)DataConvert.convertValue(valus[index], type);
+        this.lastColumn = metaData.getColumnLabel(index);
+        T result = (T)DataConvert.convertValue(valus[index], type);
+        this.wasNull = result == null;
+        return result;
     }
 
     public <T> T getValue(String columnLabel, Class<T> type){
-        return (T)DataConvert.convertValue(valus[metaData.getColumnIndex(columnLabel)], type);
+        this.lastColumn = columnLabel;
+        T result = (T)DataConvert.convertValue(valus[metaData.getColumnIndex(columnLabel)], type);
+        this.wasNull = result == null;
+        return result;
     }
 
     /**
@@ -85,5 +94,13 @@ public class GroupbyValue implements OrderByComparetor.CompareEntity{
     @Override
     public Object getValue(String columnName) throws SQLException {
         return this.getValue(columnName, Object.class);
+    }
+
+    public String getLastColumn() {
+        return lastColumn;
+    }
+
+    public boolean wasNull() {
+        return wasNull;
     }
 }
